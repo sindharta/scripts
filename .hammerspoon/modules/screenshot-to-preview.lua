@@ -2,7 +2,7 @@
 hs.hotkey.bind({"cmd", "alt"}, "V", function()
     hs.eventtap.keyStroke({"cmd", "shift", "ctrl"}, "4")
 
-    local before = hs.pasteboard.changeCount()
+    local prevPasteChangeCount = hs.pasteboard.changeCount()
     local startTime = hs.timer.secondsSinceEpoch()
 
     hs.timer.doEvery(0.2, function(timer)
@@ -12,7 +12,7 @@ hs.hotkey.bind({"cmd", "alt"}, "V", function()
             return
         end
 
-        if hs.pasteboard.changeCount() ~= before then
+        if hs.pasteboard.changeCount() ~= prevPasteChangeCount then
             local preview = hs.appfinder.appFromName("Preview")
             if preview then
                 preview:selectMenuItem({"File", "New from Clipboard"})
