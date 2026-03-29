@@ -16,6 +16,7 @@ hs.hotkey.bind({"cmd", "alt"}, "V", function()
             local preview = hs.appfinder.appFromName("Preview")
             if preview then
                 preview:selectMenuItem({"File", "New from Clipboard"})
+                preview:activate(true) -- force it to the front
             end
             timer:stop()            
             return
