@@ -22,8 +22,11 @@ hs.hotkey.bind({"cmd", "alt"}, "V", function()
         end
 
         if now - startTime > 10 then
+            hs.notify.new({
+                title = "Hammerspoon",
+                informativeText = "Screenshot timeout"
+            }):send()
             timer:stop()
-            hs.alert.show("Screenshot timeout")
         end
     end)
     
