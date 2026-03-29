@@ -1,5 +1,5 @@
 -- ScreenShot to Clipboard
-hs.hotkey.bind({"cmd", "alt"}, "P", function()
+hs.hotkey.bind({"cmd", "alt"}, "V", function()
     hs.eventtap.keyStroke({"cmd", "shift", "ctrl"}, "4")
 
     local before = hs.pasteboard.changeCount()
