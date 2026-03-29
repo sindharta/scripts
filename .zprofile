@@ -8,6 +8,7 @@ alias gps-u='git push -u'
 alias gco='git checkout'
 alias gco-b='git checkout -b'
 alias git-delete-pushed-branches='git branch | grep -Ev "(^\*|^\+|master|main|dev)" | xargs --no-run-if-empty git branch -d'
+alias grprune='git remote prune origin'
 
 
 
