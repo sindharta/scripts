@@ -18,6 +18,15 @@ csv_escape() {
   printf '"%s"' "$value"
 }
 
+absolute_path() {
+  local target="$1"
+  local parent_dir base_name
+
+  parent_dir="$(cd "$(dirname "$target")" && pwd -P)"
+  base_name="$(basename "$target")"
+  printf '%s/%s\n' "$parent_dir" "$base_name"
+}
+
 write_group() {
   local group_hash="$1"
   local group_size="$2"
@@ -60,6 +69,9 @@ fi
 
 mkdir -p "$(dirname "$OUTPUT_CSV")"
 
+SEARCH_DIR="$(cd "$SEARCH_DIR" && pwd -P)"
+OUTPUT_CSV="$(absolute_path "$OUTPUT_CSV")"
+
 inventory_file="$(mktemp)"
 sorted_file="$(mktemp)"
 groups_dir="$(mktemp -d)"
@@ -76,7 +88,7 @@ while IFS= read -r -d '' file_path; do
   file_size="$(stat -f "%z" "$file_path")"
   file_hash="$(shasum -a 256 "$file_path" | awk '{print $1}')"
   printf '%s\t%s\t%s\n' "$file_hash" "$file_size" "$file_path" >> "$inventory_file"
-done < <(find "$SEARCH_DIR" -type f -print0 2>/dev/null)
+done < <(find "$SEARCH_DIR" -type f ! -path "$OUTPUT_CSV" -print0 2>/dev/null)
 
 sort -t $'\t' -k1,1 -k2,2 -k3,3 "$inventory_file" > "$sorted_file"
 printf '"path","size","date created","date modified"\n' > "$OUTPUT_CSV"
