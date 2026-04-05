@@ -4,12 +4,15 @@ set -euo pipefail
 
 usage() {
     cat <<'EOF'
-Usage: find-duplicate-files.sh <folder_to_scan> [output_csv]
+Usage: find-duplicate-files.sh [--verbose] <folder_to_scan> [output_csv]
 
 Arguments:
     folder_to_scan  Folder to scan recursively for duplicate files
     output_csv      Optional path to the CSV file that will be created
                     Default: found-duplicates.csv
+
+Options:
+    --verbose       Print the external commands being run
 EOF
 }
 
@@ -27,6 +30,16 @@ absolute_path() {
     printf '%s/%s\n' "$parent_dir" "$base_name"
 }
 
+log_command() {
+    if [ "${VERBOSE:-0}" -eq 1 ]; then
+        printf '+' >&2
+        for arg in "$@"; do
+            printf ' %q' "$arg" >&2
+        done
+        printf '\n' >&2
+    fi
+}
+
 write_group() {
     local group_hash="$1"
     local group_size="$2"
@@ -38,7 +51,9 @@ write_group() {
 
     local file_path created modified
     for file_path in "$@"; do
+        log_command stat -f "%SB" -t "%Y-%m-%d %H:%M:%S" "$file_path"
         created="$(stat -f "%SB" -t "%Y-%m-%d %H:%M:%S" "$file_path")"
+        log_command stat -f "%Sm" -t "%Y-%m-%d %H:%M:%S" "$file_path"
         modified="$(stat -f "%Sm" -t "%Y-%m-%d %H:%M:%S" "$file_path")"
 
         {
@@ -53,6 +68,24 @@ write_group() {
         } >> "$group_file"
     done
 }
+
+VERBOSE=0
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --verbose)
+            VERBOSE=1
+            shift
+            ;;
+        --help|-h)
+            usage
+            exit 0
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
 
 if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
     usage >&2
@@ -86,11 +119,18 @@ cleanup() {
 trap cleanup EXIT
 
 while IFS= read -r -d '' file_path; do
+    log_command stat -f "%z" "$file_path"
     file_size="$(stat -f "%z" "$file_path")"
+    log_command shasum -a 256 "$file_path"
+    log_command awk '{print $1}'
     file_hash="$(shasum -a 256 "$file_path" | awk '{print $1}')"
     printf '%s\t%s\t%s\n' "$file_hash" "$file_size" "$file_path" >> "$inventory_file"
-done < <(find "$SEARCH_DIR" -type f ! -path "$OUTPUT_CSV" -print0 2>/dev/null)
+done < <(
+    log_command find "$SEARCH_DIR" -type f ! -path "$OUTPUT_CSV" -print0
+    find "$SEARCH_DIR" -type f ! -path "$OUTPUT_CSV" -print0 2>/dev/null
+)
 
+log_command sort -t $'\t' -k1,1 -k2,2 -k3,3 "$inventory_file"
 sort -t $'\t' -k1,1 -k2,2 -k3,3 "$inventory_file" > "$sorted_file"
 printf '"path","size","date created","date modified"\n' > "$output_tmp_file"
 
@@ -128,6 +168,7 @@ if [ "$group_count" -gt 1 ]; then
 fi
 
 group_files_found=0
+log_command sort -t $'\t' -k1,1nr -k2,2 "$groups_index_file"
 while IFS=$'\t' read -r group_size group_file; do
     if [ ! -f "$group_file" ]; then
         continue
@@ -160,5 +201,6 @@ while IFS=$'\t' read -r group_size group_file; do
     group_files_found=1
 done < <(sort -t $'\t' -k1,1nr -k2,2 "$groups_index_file")
 
+log_command mv "$output_tmp_file" "$OUTPUT_CSV"
 mv "$output_tmp_file" "$OUTPUT_CSV"
 printf 'CSV report written to %s\n' "$OUTPUT_CSV"
