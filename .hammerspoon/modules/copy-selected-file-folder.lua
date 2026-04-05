@@ -1,4 +1,4 @@
-local copySelectedPathHotkey = { "alt", "cmd" }
+local copySelectedPathHotkey = { "ctrl", "alt", "cmd" }
 local copySelectedPathKey = "P"
 
 local function runAppleScript(script)
