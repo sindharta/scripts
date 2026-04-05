@@ -134,9 +134,9 @@ cleanup() {
 
 trap cleanup EXIT
 
-while IFS= read -r -d '' file_path; do
-    file_size="${file_path%% *}"
-    file_path="${file_path#* }"
+while IFS= read -r stat_line; do
+    file_size="${stat_line%% *}"
+    file_path="${stat_line#* }"
     printf '%s\t%s\n' "$file_size" "$file_path" >> "$inventory_file"
 done < <(
     log_command find "$SEARCH_DIR" -type f ! -path "$OUTPUT_CSV" -exec stat -f "%z %N" '{}' +
