@@ -24,14 +24,15 @@ write_group() {
   local group_file="$3"
   shift 3
 
+  csv_escape "$group_hash" > "$group_file"
+  printf '\n' >> "$group_file"
+
   local file_path created modified
   for file_path in "$@"; do
     created="$(stat -f "%SB" -t "%Y-%m-%d %H:%M:%S" "$file_path")"
     modified="$(stat -f "%Sm" -t "%Y-%m-%d %H:%M:%S" "$file_path")"
 
     {
-      csv_escape "$group_hash"
-      printf ','
       csv_escape "$file_path"
       printf ','
       csv_escape "$group_size"
@@ -78,8 +79,7 @@ while IFS= read -r -d '' file_path; do
 done < <(find "$SEARCH_DIR" -type f -print0 2>/dev/null)
 
 sort -t $'\t' -k1,1 -k2,2 -k3,3 "$inventory_file" > "$sorted_file"
-
-printf '"group_id","sha256","file_path","file_size_bytes","date_created","date_modified"\n' > "$OUTPUT_CSV"
+printf '"path","size","date created","date modified"\n' > "$OUTPUT_CSV"
 
 current_hash=""
 current_size=""
@@ -115,20 +115,33 @@ if [ "$group_count" -gt 1 ]; then
 fi
 
 group_files_found=0
-display_group_id=0
-while IFS=$'\t' read -r _ group_file; do
+while IFS=$'\t' read -r group_size group_file; do
   if [ ! -f "$group_file" ]; then
     continue
   fi
 
-  display_group_id=$((display_group_id + 1))
-
   if [ "$group_files_found" -eq 1 ]; then
-    printf '\n' >> "$OUTPUT_CSV"
+    printf ',,,\n' >> "$OUTPUT_CSV"
   fi
 
+  group_hash=""
+  while IFS= read -r first_line; do
+    group_hash="${first_line%%,*}"
+    break
+  done < "$group_file"
+
+  if [ -n "$group_hash" ]; then
+    printf '%s\n' "$group_hash" >> "$OUTPUT_CSV"
+  fi
+
+  skip_first_line=1
   while IFS= read -r group_line; do
-    printf '"%s",%s\n' "$display_group_id" "$group_line" >> "$OUTPUT_CSV"
+    if [ "$skip_first_line" -eq 1 ]; then
+      skip_first_line=0
+      continue
+    fi
+
+    printf '%s\n' "$group_line" >> "$OUTPUT_CSV"
   done < "$group_file"
 
   group_files_found=1
