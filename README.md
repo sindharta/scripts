@@ -9,7 +9,7 @@ This repository includes a macOS-friendly Bash script for finding duplicate file
 ## What it does
 
 - Scans a folder recursively
-- Detects duplicate files using SHA-256 and file size
+- Detects duplicate files using a staged check: file size, then `cksum`, then SHA-256
 - Writes a CSV report grouped by duplicate set
 - Uses the SHA-256 value as the group code shown above each duplicate set
 - Adds an empty row between duplicate groups
@@ -47,10 +47,18 @@ You can also provide a custom output path:
 ./find-duplicate-files.sh "/path/to/folder" "/path/to/report.csv"
 ```
 
+To print the external commands being run:
+
+```bash
+./find-duplicate-files.sh --verbose "/path/to/folder"
+```
+
 ## Notes
 
 - The first parameter is required and must be a directory.
 - The second parameter is optional.
+- Use `--verbose` to print the external commands executed by the script.
+- For speed, SHA-256 is only computed for files that already matched on file size and `cksum`.
 - Only duplicate files are included in the CSV output.
 - If no duplicates are found, the CSV file is created as an empty file.
 - The script is intended for macOS and uses the macOS `stat` command format.
