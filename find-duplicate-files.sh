@@ -106,13 +106,29 @@ SEARCH_DIR="$(cd "$SEARCH_DIR" && pwd -P)"
 OUTPUT_CSV="$(absolute_path "$OUTPUT_CSV")"
 
 inventory_file="$(mktemp)"
+size_sorted_file="$(mktemp)"
+size_candidates_file="$(mktemp)"
+cksum_inventory_file="$(mktemp)"
+cksum_sorted_file="$(mktemp)"
+hash_candidates_file="$(mktemp)"
+hash_inventory_file="$(mktemp)"
 sorted_file="$(mktemp)"
 groups_dir="$(mktemp -d)"
 groups_index_file="$(mktemp)"
 output_tmp_file="$(mktemp)"
 
 cleanup() {
-    rm -f "$inventory_file" "$sorted_file" "$groups_index_file" "$output_tmp_file"
+    rm -f \
+        "$inventory_file" \
+        "$size_sorted_file" \
+        "$size_candidates_file" \
+        "$cksum_inventory_file" \
+        "$cksum_sorted_file" \
+        "$hash_candidates_file" \
+        "$hash_inventory_file" \
+        "$sorted_file" \
+        "$groups_index_file" \
+        "$output_tmp_file"
     rm -rf "$groups_dir"
 }
 
@@ -121,17 +137,93 @@ trap cleanup EXIT
 while IFS= read -r -d '' file_path; do
     log_command stat -f "%z" "$file_path"
     file_size="$(stat -f "%z" "$file_path")"
-    log_command shasum -a 256 "$file_path"
-    log_command awk '{print $1}'
-    file_hash="$(shasum -a 256 "$file_path" | awk '{print $1}')"
-    printf '%s\t%s\t%s\n' "$file_hash" "$file_size" "$file_path" >> "$inventory_file"
+    printf '%s\t%s\n' "$file_size" "$file_path" >> "$inventory_file"
 done < <(
     log_command find "$SEARCH_DIR" -type f ! -path "$OUTPUT_CSV" -print0
     find "$SEARCH_DIR" -type f ! -path "$OUTPUT_CSV" -print0 2>/dev/null
 )
 
-log_command sort -t $'\t' -k1,1 -k2,2 -k3,3 "$inventory_file"
-sort -t $'\t' -k1,1 -k2,2 -k3,3 "$inventory_file" > "$sorted_file"
+log_command sort -t $'\t' -k1,1n -k2,2 "$inventory_file"
+sort -t $'\t' -k1,1n -k2,2 "$inventory_file" > "$size_sorted_file"
+
+current_size=""
+size_group_count=0
+size_group_files=()
+
+while IFS=$'\t' read -r file_size file_path; do
+    if [ "$file_size" = "$current_size" ]; then
+        size_group_files+=("$file_path")
+        size_group_count=$((size_group_count + 1))
+        continue
+    fi
+
+    if [ "$size_group_count" -gt 1 ]; then
+        for candidate_path in "${size_group_files[@]}"; do
+            printf '%s\t%s\n' "$current_size" "$candidate_path" >> "$size_candidates_file"
+        done
+    fi
+
+    current_size="$file_size"
+    size_group_files=("$file_path")
+    size_group_count=1
+done < "$size_sorted_file"
+
+if [ "$size_group_count" -gt 1 ]; then
+    for candidate_path in "${size_group_files[@]}"; do
+        printf '%s\t%s\n' "$current_size" "$candidate_path" >> "$size_candidates_file"
+    done
+fi
+
+while IFS=$'\t' read -r file_size file_path; do
+    log_command cksum "$file_path"
+    cksum_output="$(cksum "$file_path")"
+    cksum_value="${cksum_output%% *}"
+    printf '%s\t%s\t%s\n' "$cksum_value" "$file_size" "$file_path" >> "$cksum_inventory_file"
+done < "$size_candidates_file"
+
+log_command sort -t $'\t' -k1,1 -k2,2n -k3,3 "$cksum_inventory_file"
+sort -t $'\t' -k1,1 -k2,2n -k3,3 "$cksum_inventory_file" > "$cksum_sorted_file"
+
+current_cksum=""
+current_size=""
+cksum_group_count=0
+cksum_group_files=()
+
+while IFS=$'\t' read -r cksum_value file_size file_path; do
+    if [ "$cksum_value" = "$current_cksum" ] && [ "$file_size" = "$current_size" ]; then
+        cksum_group_files+=("$file_path")
+        cksum_group_count=$((cksum_group_count + 1))
+        continue
+    fi
+
+    if [ "$cksum_group_count" -gt 1 ]; then
+        for candidate_path in "${cksum_group_files[@]}"; do
+            printf '%s\t%s\n' "$current_size" "$candidate_path" >> "$hash_candidates_file"
+        done
+    fi
+
+    current_cksum="$cksum_value"
+    current_size="$file_size"
+    cksum_group_files=("$file_path")
+    cksum_group_count=1
+done < "$cksum_sorted_file"
+
+if [ "$cksum_group_count" -gt 1 ]; then
+    for candidate_path in "${cksum_group_files[@]}"; do
+        printf '%s\t%s\n' "$current_size" "$candidate_path" >> "$hash_candidates_file"
+    done
+fi
+
+while IFS=$'\t' read -r file_size file_path; do
+    log_command shasum -a 256 "$file_path"
+    log_command awk '{print $1}'
+    file_hash="$(shasum -a 256 "$file_path" | awk '{print $1}')"
+    printf '%s\t%s\t%s\n' "$file_hash" "$file_size" "$file_path" >> "$hash_inventory_file"
+done < "$hash_candidates_file"
+
+log_command sort -t $'\t' -k1,1 -k2,2n -k3,3 "$hash_inventory_file"
+sort -t $'\t' -k1,1 -k2,2n -k3,3 "$hash_inventory_file" > "$sorted_file"
+
 printf '"path","size","date created","date modified"\n' > "$output_tmp_file"
 
 current_hash=""
