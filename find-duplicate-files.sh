@@ -135,12 +135,12 @@ cleanup() {
 trap cleanup EXIT
 
 while IFS= read -r -d '' file_path; do
-    log_command stat -f "%z" "$file_path"
-    file_size="$(stat -f "%z" "$file_path")"
+    file_size="${file_path%% *}"
+    file_path="${file_path#* }"
     printf '%s\t%s\n' "$file_size" "$file_path" >> "$inventory_file"
 done < <(
-    log_command find "$SEARCH_DIR" -type f ! -path "$OUTPUT_CSV" -print0
-    find "$SEARCH_DIR" -type f ! -path "$OUTPUT_CSV" -print0 2>/dev/null
+    log_command find "$SEARCH_DIR" -type f ! -path "$OUTPUT_CSV" -exec stat -f "%z %N" '{}' +
+    find "$SEARCH_DIR" -type f ! -path "$OUTPUT_CSV" -exec stat -f '%z %N' {} + 2>/dev/null
 )
 
 log_command sort -t $'\t' -k1,1n -k2,2 "$inventory_file"
