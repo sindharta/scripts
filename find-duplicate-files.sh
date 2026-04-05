@@ -76,9 +76,10 @@ inventory_file="$(mktemp)"
 sorted_file="$(mktemp)"
 groups_dir="$(mktemp -d)"
 groups_index_file="$(mktemp)"
+output_tmp_file="$(mktemp)"
 
 cleanup() {
-  rm -f "$inventory_file" "$sorted_file" "$groups_index_file"
+  rm -f "$inventory_file" "$sorted_file" "$groups_index_file" "$output_tmp_file"
   rm -rf "$groups_dir"
 }
 
@@ -91,7 +92,7 @@ while IFS= read -r -d '' file_path; do
 done < <(find "$SEARCH_DIR" -type f ! -path "$OUTPUT_CSV" -print0 2>/dev/null)
 
 sort -t $'\t' -k1,1 -k2,2 -k3,3 "$inventory_file" > "$sorted_file"
-printf '"path","size","date created","date modified"\n' > "$OUTPUT_CSV"
+printf '"path","size","date created","date modified"\n' > "$output_tmp_file"
 
 current_hash=""
 current_size=""
@@ -133,7 +134,7 @@ while IFS=$'\t' read -r group_size group_file; do
   fi
 
   if [ "$group_files_found" -eq 1 ]; then
-    printf ',,,\n' >> "$OUTPUT_CSV"
+    printf ',,,\n' >> "$output_tmp_file"
   fi
 
   group_hash=""
@@ -143,7 +144,7 @@ while IFS=$'\t' read -r group_size group_file; do
   done < "$group_file"
 
   if [ -n "$group_hash" ]; then
-    printf '%s\n' "$group_hash" >> "$OUTPUT_CSV"
+    printf '%s\n' "$group_hash" >> "$output_tmp_file"
   fi
 
   skip_first_line=1
@@ -153,10 +154,11 @@ while IFS=$'\t' read -r group_size group_file; do
       continue
     fi
 
-    printf '%s\n' "$group_line" >> "$OUTPUT_CSV"
+    printf '%s\n' "$group_line" >> "$output_tmp_file"
   done < "$group_file"
 
   group_files_found=1
 done < <(sort -t $'\t' -k1,1nr -k2,2 "$groups_index_file")
 
+mv "$output_tmp_file" "$OUTPUT_CSV"
 printf 'CSV report written to %s\n' "$OUTPUT_CSV"
