@@ -54,7 +54,7 @@ To print the external commands being run:
 ./find-duplicate-files.sh --verbose "/path/to/folder"
 ```
 
-The script also prints progress to the console, including the current step and percentage within file-processing stages.
+The script also prints progress to the console, including the current step. The initial file-size scan shows a live processed-file count, and later stages show percentages.
 
 ## Notes
 
