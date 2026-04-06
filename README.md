@@ -14,6 +14,7 @@ This repository includes a macOS-friendly Bash script for finding duplicate file
 - Uses the SHA-256 value as the group code shown above each duplicate set
 - Adds an empty row between duplicate groups
 - Sorts duplicate groups by file size in descending order
+- Shows progress for each major processing step
 
 ## CSV format
 
@@ -52,6 +53,8 @@ To print the external commands being run:
 ```bash
 ./find-duplicate-files.sh --verbose "/path/to/folder"
 ```
+
+The script also prints progress to the console, including the current step and percentage within file-processing stages.
 
 ## Notes
 
