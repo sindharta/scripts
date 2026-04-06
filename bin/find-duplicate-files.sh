@@ -162,7 +162,6 @@ write_group() {
 VERBOSE=0
 PROGRESS_STEPS=6
 PROGRESS_LINE_ACTIVE=0
-REPORT_FILES_WRITTEN=0
 
 while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -228,6 +227,7 @@ cleanup() {
 }
 
 trap cleanup EXIT
+
 progress_begin 1 "Collecting file sizes"
 
 while IFS= read -r stat_line; do
