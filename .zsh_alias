@@ -1,6 +1,11 @@
 alias gfmain='git fetch origin main:main'
 alias gfmaster='git fetch origin master:master'
 alias gftrunk='git fetch origin trunk:trunk'
+
+alias gpmain='git pull --rebase origin main'
+alias gpmaster='git pull --rebase origin master'
+alias gptrunk='git pull --rebase origin trunk'
+
 alias gp='git pull'
 alias gp-r='git pull --rebase'
 alias gps='git push'
