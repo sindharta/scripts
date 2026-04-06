@@ -40,14 +40,6 @@ log_command() {
     fi
 }
 
-count_search_files() {
-    log_command find "$SEARCH_DIR" -type f ! -path "$OUTPUT_CSV" -print0
-    log_command tr -cd '\0'
-    log_command wc -c
-    log_command awk '{print $1}'
-    find "$SEARCH_DIR" -type f ! -path "$OUTPUT_CSV" -print0 2>/dev/null | tr -cd '\0' | wc -c | awk '{print $1}'
-}
-
 count_file_lines() {
     local file_path="$1"
 
@@ -82,6 +74,18 @@ progress_begin() {
         printf '[%s/%s] %s...\n' "$step_number" "$PROGRESS_STEPS" "$step_label" >&2
         PROGRESS_LINE_ACTIVE=0
     fi
+}
+
+progress_tick_count() {
+    local increment="${1:-1}"
+
+    PROGRESS_CURRENT=$((PROGRESS_CURRENT + increment))
+    printf '[%s/%s] %s: %s files processed\r' \
+        "$PROGRESS_STEP" \
+        "$PROGRESS_STEPS" \
+        "$PROGRESS_LABEL" \
+        "$PROGRESS_CURRENT" >&2
+    PROGRESS_LINE_ACTIVE=1
 }
 
 progress_tick() {
@@ -224,16 +228,13 @@ cleanup() {
 }
 
 trap cleanup EXIT
-
-total_files="$(count_search_files)"
-
-progress_begin 1 "Collecting file sizes" "$total_files"
+progress_begin 1 "Collecting file sizes"
 
 while IFS= read -r stat_line; do
     file_size="${stat_line%% *}"
     file_path="${stat_line#* }"
     printf '%s\t%s\n' "$file_size" "$file_path" >> "$inventory_file"
-    progress_tick
+    progress_tick_count
 done < <(
     log_command find "$SEARCH_DIR" -type f ! -path "$OUTPUT_CSV" -exec stat -f "%z %N" '{}' +
     find "$SEARCH_DIR" -type f ! -path "$OUTPUT_CSV" -exec stat -f '%z %N' {} + 2>/dev/null
@@ -247,7 +248,8 @@ sort -t $'\t' -k1,1n -k2,2 "$inventory_file" > "$size_sorted_file"
 current_size=""
 size_group_count=0
 size_group_files=()
-progress_begin 2 "Finding same-size candidates" "$total_files"
+inventory_total="$(count_file_lines "$inventory_file")"
+progress_begin 2 "Finding same-size candidates" "$inventory_total"
 
 while IFS=$'\t' read -r file_size file_path; do
     progress_tick
