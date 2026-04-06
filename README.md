@@ -4,7 +4,7 @@ This repository includes a macOS-friendly Bash script for finding duplicate file
 
 ## Script
 
-`find-duplicate-files.sh`
+`bin/find-duplicate-files.sh`
 
 ## What it does
 
@@ -37,7 +37,7 @@ The file rows contain:
 ## Usage
 
 ```bash
-./find-duplicate-files.sh "/path/to/folder"
+./bin/find-duplicate-files.sh "/path/to/folder"
 ```
 
 This creates `found-duplicates.csv` in your current working directory.
@@ -45,13 +45,13 @@ This creates `found-duplicates.csv` in your current working directory.
 You can also provide a custom output path:
 
 ```bash
-./find-duplicate-files.sh "/path/to/folder" "/path/to/report.csv"
+./bin/find-duplicate-files.sh "/path/to/folder" "/path/to/report.csv"
 ```
 
 To print the external commands being run:
 
 ```bash
-./find-duplicate-files.sh --verbose "/path/to/folder"
+./bin/find-duplicate-files.sh --verbose "/path/to/folder"
 ```
 
 The script also prints progress to the console, including the current step. The initial file-size scan shows a live processed-file count, and later stages show percentages.

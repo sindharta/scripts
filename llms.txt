@@ -1,17 +1,37 @@
 # Personal Mac Automation Scripts
 
-> A small personal automation repo for macOS. The `MacShortcuts` directory stores assets used by the Shortcuts app on Mac, while Hammerspoon configuration and Lua modules live under `.hammerspoon`.
+> A small personal automation repo for macOS. It includes Apple Shortcuts assets, Hammerspoon configuration, and a Bash utility for finding duplicate files with progress reporting and grouped CSV output.
 
 Use this repository with the following structure in mind:
 
 - `MacShortcuts` is for Apple Shortcuts-related scripts and supporting assets, such as shell scripts and images used by macOS Shortcuts workflows.
 - `.hammerspoon` is for Hammerspoon configuration. Reusable Lua modules are stored in `.hammerspoon/modules`.
+- `bin/find-duplicate-files.sh` is a standalone macOS Bash utility for recursively finding duplicate files and exporting a grouped CSV report.
+- `README.md` currently documents the duplicate-file workflow and is the best human-readable overview of that script's behavior and usage.
 - Do not assume files in `MacShortcuts` are Hammerspoon modules, and do not assume Hammerspoon Lua files belong in `MacShortcuts`.
 - The `LICENSE` file applies at the repository root.
+
+Important notes for the duplicate finder:
+
+- It is macOS-specific and uses BSD/macOS `stat` formatting.
+- It accepts `bin/find-duplicate-files.sh [--verbose] <folder_to_scan> [output_csv]`.
+- If `output_csv` is omitted, it writes `found-duplicates.csv` in the current working directory.
+- It excludes the output CSV from the scan, resolves the scan path and output path to absolute paths, and writes the final report through a temporary file before moving it into place.
+- Duplicate detection is staged for speed: collect file sizes, keep only same-size candidates, run `cksum` on candidates, then run SHA-256 only on surviving matches.
+- Progress is printed to stderr. Step 1 shows a live processed-file count; later stages show percentages.
+- The CSV starts with `"path","size","date created","date modified"`. Each duplicate group is then written as a SHA-256 group-code line followed by file rows, with `,,,` between groups.
+- Duplicate groups are sorted by file size in descending order.
 
 ## Repo Files
 
 - [LICENSE](./LICENSE): Repository license.
+- [llms.txt](./llms.txt): LLM-oriented overview of the repository structure and key files.
+- [README.md](./README.md): Usage and behavior notes for the duplicate-file finder script.
+- [find-duplicate-files.sh](./bin/find-duplicate-files.sh): macOS Bash script that finds duplicate files and writes a grouped CSV report.
+
+## Tools
+
+- [find-duplicate-files.sh](./bin/find-duplicate-files.sh): Duplicate-file finder for macOS with staged hashing, progress reporting, verbose mode, and grouped CSV output.
 
 ## Mac Shortcuts
 
