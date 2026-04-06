@@ -127,17 +127,18 @@ write_group() {
     local group_hash="$1"
     local group_size="$2"
     local group_file="$3"
-    shift 3
+    local metadata_file="$4"
+    shift 4
 
     csv_escape "$group_hash" > "$group_file"
     printf '\n' >> "$group_file"
 
-    local file_path created modified
+    local file_path created modified metadata_line
     for file_path in "$@"; do
-        log_command stat -f "%SB" -t "%Y-%m-%d %H:%M:%S" "$file_path"
-        created="$(stat -f "%SB" -t "%Y-%m-%d %H:%M:%S" "$file_path")"
-        log_command stat -f "%Sm" -t "%Y-%m-%d %H:%M:%S" "$file_path"
-        modified="$(stat -f "%Sm" -t "%Y-%m-%d %H:%M:%S" "$file_path")"
+        metadata_line="$(awk -F '\t' -v target="$file_path" '$1 == target { print; exit }' "$metadata_file")"
+        created="${metadata_line#*$'\t'}"
+        created="${created%%$'\t'*}"
+        modified="${metadata_line##*$'\t'}"
 
         {
             csv_escape "$file_path"
@@ -201,6 +202,7 @@ cksum_sorted_file="$(mktemp)"
 hash_candidates_file="$(mktemp)"
 hash_inventory_file="$(mktemp)"
 sorted_file="$(mktemp)"
+metadata_file="$(mktemp)"
 groups_dir="$(mktemp -d)"
 groups_index_file="$(mktemp)"
 output_tmp_file="$(mktemp)"
@@ -215,6 +217,7 @@ cleanup() {
         "$hash_candidates_file" \
         "$hash_inventory_file" \
         "$sorted_file" \
+        "$metadata_file" \
         "$groups_index_file" \
         "$output_tmp_file"
     rm -rf "$groups_dir"
@@ -339,6 +342,23 @@ progress_finish
 log_command sort -t $'\t' -k1,1 -k2,2n -k3,3 "$hash_inventory_file"
 sort -t $'\t' -k1,1 -k2,2n -k3,3 "$hash_inventory_file" > "$sorted_file"
 
+if [ -s "$sorted_file" ]; then
+    metadata_paths_file="$(mktemp)"
+    while IFS=$'\t' read -r file_hash file_size file_path; do
+        printf '%s\0' "$file_path" >> "$metadata_paths_file"
+    done < "$sorted_file"
+
+    log_command xargs -0 stat -f "%N"$'\t'"%SB"$'\t'"%Sm" -t "%Y-%m-%d %H:%M:%S"
+    while IFS= read -r metadata_line; do
+        metadata_path="${metadata_line%%$'\t'*}"
+        metadata_rest="${metadata_line#*$'\t'}"
+        metadata_created="${metadata_rest%%$'\t'*}"
+        metadata_modified="${metadata_rest#*$'\t'}"
+        printf '%s\t%s\t%s\n' "$metadata_path" "$metadata_created" "$metadata_modified" >> "$metadata_file"
+    done < <(xargs -0 stat -f '%N	%SB	%Sm' -t '%Y-%m-%d %H:%M:%S' < "$metadata_paths_file")
+    rm -f "$metadata_paths_file"
+fi
+
 printf '"path","size","date created","date modified"\n' > "$output_tmp_file"
 
 current_hash=""
@@ -359,7 +379,7 @@ while IFS=$'\t' read -r file_hash file_size file_path; do
     if [ "$group_count" -gt 1 ]; then
         group_id=$((group_id + 1))
         group_file="$groups_dir/group_$(printf '%06d' "$group_id").csv"
-        write_group "$current_hash" "$current_size" "$group_file" "${group_files[@]}"
+        write_group "$current_hash" "$current_size" "$group_file" "$metadata_file" "${group_files[@]}"
         printf '%s\t%s\n' "$current_size" "$group_file" >> "$groups_index_file"
     fi
 
@@ -372,7 +392,7 @@ done < "$sorted_file"
 if [ "$group_count" -gt 1 ]; then
     group_id=$((group_id + 1))
     group_file="$groups_dir/group_$(printf '%06d' "$group_id").csv"
-    write_group "$current_hash" "$current_size" "$group_file" "${group_files[@]}"
+    write_group "$current_hash" "$current_size" "$group_file" "$metadata_file" "${group_files[@]}"
     printf '%s\t%s\n' "$current_size" "$group_file" >> "$groups_index_file"
 fi
 
