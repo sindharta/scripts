@@ -3,7 +3,7 @@ alias gfmaster='git fetch origin master:master'
 alias gftrunk='git fetch origin trunk:trunk'
 alias gfmain-co='git fetch origin main:main && git checkout main'
 alias gfmaster-co='git fetch origin master:master && git checkout master'
-alias gftrunk=-co'git fetch origin trunk:trunk && git checkout trunk'
+alias gftrunk-co'git fetch origin trunk:trunk && git checkout trunk'
 
 
 alias gpmain='git pull --rebase origin main'
