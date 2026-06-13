@@ -2,7 +2,7 @@
 -- Auto Reload
 ------------------------------------------------------------
 
-local watchers = {}
+hs._configWatchers = hs._configWatchers or {}
 
 function reloadConfig(files)
     for _, file in pairs(files) do
@@ -16,7 +16,7 @@ end
 local function addWatcher(path)
     local watcher = hs.pathwatcher.new(path, reloadConfig)
     watcher:start()
-    table.insert(watchers, watcher)
+    table.insert(hs._configWatchers, watcher)
     print("Watching: " .. path)
 end
 
@@ -40,7 +40,7 @@ for file in hs.fs.dir(pluginDir) do
             local watcher = hs.pathwatcher.new(target, reloadConfig)
             watcher:start()
 
-            table.insert(watchers, watcher)
+            table.insert(hs._configWatchers, watcher)
         end
     end
 end
@@ -49,4 +49,3 @@ hs.notify.new({
     title = "Hammerspoon",
     informativeText = "Config loaded"
 }):send()
-
