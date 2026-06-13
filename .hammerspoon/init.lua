@@ -32,4 +32,26 @@ local function loadLuaFiles(dir)
     end
 end
 
-loadLuaFiles(os.getenv("HOME") .. "/.hammerspoon/plugins/tcg")
+local function loadPlugins(pluginDir)
+    local realDir = hs.fs.pathToAbsolute(pluginDir)
+
+    if not realDir then
+        print("Invalid plugin dir:", pluginDir)
+        return
+    end
+
+    loadLuaFiles(realDir)
+
+    for file in hs.fs.dir(realDir) do
+        if file ~= "." and file ~= ".." then
+            local fullPath = realDir .. "/" .. file
+            local target = hs.fs.pathToAbsolute(fullPath)
+
+            if target and hs.fs.attributes(target, "mode") == "directory" then
+                loadLuaFiles(target)
+            end
+        end
+    end
+end
+
+loadPlugins(os.getenv("HOME") .. "/.hammerspoon/plugins")
